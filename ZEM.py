@@ -6,8 +6,6 @@ import imports.logHandler as lH
 import imports.testHandler as tH
 
 basedir = ""
-run_tests = False
-use_logger = False
 
 def main():
     # Parse arguments passed to python script
@@ -23,7 +21,7 @@ def main():
             basedir = cmdArs[basedir]
 
     # Find the config and handle all initialization of variables.
-    configInfo = cH.initialize()
+    metaConfig,materialConfig = cH.initialize()
 
     # Initialize and run the tests if configInfo calls for it.
     if run_tests:
@@ -35,7 +33,7 @@ def main():
     # Initialize the logger if configInfo calls for it.
     if use_logger:
         lH.initLogs()
-        
+
     return 0
 
 if __name__ == "__main__":
