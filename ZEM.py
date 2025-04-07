@@ -16,23 +16,23 @@ def main():
     # We could have no args
     if cmdArgs != None:
         # We could have args, but no basedir
-        if cmdArs[basedir] != None:
+        if cmdArgs["basedir"] != None:
             # We have our basedir, lets set it and use it
-            basedir = cmdArs[basedir]
+            basedir = cmdArgs["basedir"]
 
     # Find the config and handle all initialization of variables.
-    metaConfig,materialConfig = cH.initialize()
+    metaConfig,materialConfig = cH.initialize(basedir)
 
-    # Initialize and run the tests if configInfo calls for it.
-    if run_tests:
-        # This will kill the program if the tests fail
-        fail = tH.initTests()
-        if fail:
-            exit(0)
+    # # Initialize and run the tests if configInfo calls for it.
+    # if run_tests:
+    #     # This will kill the program if the tests fail
+    #     fail = tH.initTests()
+    #     if fail:
+    #         exit(0)
 
-    # Initialize the logger if configInfo calls for it.
-    if use_logger:
-        lH.initLogs()
+    # # Initialize the logger if configInfo calls for it.
+    # if use_logger:
+    #     lH.initLogs()
 
     return 0
 
