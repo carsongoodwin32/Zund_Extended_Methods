@@ -13,6 +13,7 @@ def main():
 
     # Default basedir to the current dir
     basedir = os.getcwd()
+
     # We could have no args
     if cmdArgs != None:
         # We could have args, but no basedir
@@ -24,7 +25,7 @@ def main():
     metaConfig,materialConfig = cH.initialize(basedir)
 
     # # Initialize and run the tests if configInfo calls for it.
-    # if run_tests:
+    # if metaConfig.tE:
     #     # This will kill the program if the tests fail
     #     fail = tH.initTests()
     #     if fail:

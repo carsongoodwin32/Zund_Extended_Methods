@@ -9,12 +9,54 @@ class materialConfig:
         self.dL = delete_layers
         self.pPC = post_process_cmd
 
-    def parseMaterial(self,matDict):
-        return
+    def parseMaterial(self,mat,matDict):
+        self.mat = mat
+        #Check if method_file even exists in this dict
+        if 'method_file' in matDict:
+            #Basic checks to see if it's actually a file
+            try:
+                if isinstance(matDict['method_file'],str) and len(matDict['method_file'])>0 and matDict['method_file'][-4:] == '.xml':
+                    self.mFP = matDict['method_file']
+            except Exception as e:
+                print("Error parsing 'method_file' for config "+mat+". Exception recieved: '"+str(e)+"'")
+                self.mFP = None
+
+        #Check if change_type_on even exists in this dict
+        if 'change_type_on' in matDict:
+            #I don't think this needs to be wrapped in a try except, but whatever
+            try:
+                if isinstance(matDict['change_type_on'],str):
+                    self.cTO = matDict['change_type_on']
+            except Exception as e:
+                print("Error parsing 'change_type_on' for config "+mat+". Exception recieved: '"+str(e)+"'")
+                self.cTO = None
+        
+        #Check if delete_layers even exists in this dict
+        if 'delete_layers' in matDict:
+            #configparser handles arrays nicely.
+            #This is undocumented, but we'll also handle just a straight string
+            try:
+                if isinstance(matDict['delete_layers'],str):
+                    self.dL = [matDict['delete_layers']]
+                elif isinstance(matDict['delete_layers'],list):
+                    self.dL = matDict['delete_layers']
+            except Exception as e:
+                print("Error parsing  'delete_layers' for config "+mat+". Exception recieved: '"+str(e)+"'")
+                self.dL = None
+
+        #Check if post_process_cmd even exists in this dict
+        if 'post_process_cmd' in matDict:
+            #I dont think this one needs try except either
+            try:
+                if (isinstance(matDict['post_process_cmd'],str) and len(matDict['method_file'])>0):
+                    self.pPC = matDict['post_process_cmd']
+            except Exception as e:
+                print("Error parsing 'post_process_cmd' for config "+mat+". Exception recieved: '"+str(e)+"'")
+                self.pPC = None
 
 class metaConfig:
-    def __init__(self, test_environment=None, log_to_file=None, path_to_log=None, log_behavior=None, watch_hotfolder=None, 
-             retroactively_process=None, delete_file_after_processing=None, append_extension_string=None, 
+    def __init__(self, test_environment=False, log_to_file=False, path_to_log=None, log_behavior='append', watch_hotfolder=False, 
+             retroactively_process=False, delete_file_after_processing=False, append_extension_string='.zem', 
              hotfolder_dir=None, output_dir=None, original_files_dir=None):
         self.tE = test_environment
         self.lTF = log_to_file
@@ -28,8 +70,121 @@ class metaConfig:
         self.oD = output_dir
         self.oFD = original_files_dir
 
+    def validateMeta(self):
+        if(self.lTF):
+            if(self.pTL == None):
+                print("settings.cfg validation failed: path_to_log not set while log_to_file = true")
+        
+        if(self.wH):
+            if(self.hD == None):
+                print("settings.cfg validation failed: hotfolder_dir not set while watch_hotfolder = true")
+        
+        if(self.oD == None):
+            print("settings.cfg validation failed: output_dir not set")
+
+        if(not self.dFAP):
+            if(self.oFD == None):
+                print("settings.cfg validation failed: original_files_dir not set while delete_files_after_processing = false")
+            else:
+                if(self.oFD == self.hD or self.oFD == oD):  
+                    print("settings.cfg validation failed: original_files_dir is equal to hotfolder_dir or output_dir")
+
     def parseMeta(self,metaDict):
-        return
+        if 'test_environment' in metaDict:
+            try:
+                if metaDict['test_environment'].lower() == "true":
+                    self.tE = True
+                else:
+                    self.tE = False
+            except Exception as e:
+                print("Error parsing 'test_environment' for config: META. Exception recieved: '"+str(e)+"'")
+                self.tE = False
+        
+        if 'log_to_file' in metaDict:
+            try:
+                if metaDict['log_to_file'].lower() == "true":
+                    self.lTF = True
+                else:
+                    self.lTF = False
+            except Exception as e:
+                print("Error parsing 'log_to_file' for config: META. Exception recieved: '"+str(e)+"'")
+                self.lTF = False
+        
+        if 'path_to_log' in metaDict:
+            try:
+                self.pTL = metaDict['path_to_log']
+            except Exception as e:
+                print("Error parsing 'path_to_log' for config: META. Exception recieved: '"+str(e)+"'")
+                self.pTL = None
+
+        if 'log_behavior' in metaDict:
+            try:
+                if metaDict['log_behavior'].lower() == "overwrite":
+                    self.lB = "overwrite"
+                else:
+                    self.lB = "append"
+            except Exception as e:
+                print("Error parsing 'log_behavior' for config: META. Exception recieved: '"+str(e)+"'")
+                self.lB = "append"
+
+        if 'watch_hotfolder' in metaDict:
+            try:
+                if metaDict['watch_hotfolder'].lower() == "true":
+                    self.wH = True
+                else:
+                    self.wH = False
+            except Exception as e:
+                print("Error parsing 'watch_hotfolder' for config: META. Exception recieved: '"+str(e)+"'")
+                self.wH = False
+
+        if 'retroactively_process' in metaDict:
+            try:
+                if metaDict['retroactively_process'].lower() == "true":
+                    self.rP = True
+                else:
+                    self.rP = False
+            except Exception as e:
+                print("Error parsing 'retroactively_process' for config: META. Exception recieved: '"+str(e)+"'")
+                self.rP = False
+
+        if 'delete_file_after_processing' in metaDict:
+            try:
+                if metaDict['delete_file_after_processing'].lower() == "true":
+                    self.dFAP = True
+                else:
+                    self.dFAP = False
+            except Exception as e:
+                print("Error parsing 'delete_file_after_processing' for config: META. Exception recieved: '"+str(e)+"'")
+                self.dFAP = False
+
+        if 'append_extension_string' in metaDict:
+            try:
+                self.lB = metaDict['append_extension_string']
+            except Exception as e:
+                print("Error parsing 'append_extension_string' for config: META. Exception recieved: '"+str(e)+"'")
+                self.lB = '.zem'
+
+        if 'hotfolder_dir' in metaDict:
+            try:
+                self.hD = metaDict['hotfolder_dir']
+            except Exception as e:
+                print("Error parsing 'hotfolder_dir' for config: META. Exception recieved: '"+str(e)+"'")
+                self.hD = None
+
+        if 'output_dir' in metaDict:
+            try:
+                self.oD = metaDict['output_dir']
+            except Exception as e:
+                print("Error parsing 'output_dir' for config: META. Exception recieved: '"+str(e)+"'")
+                self.oD = None
+
+        if 'original_files_dir' in metaDict:
+            try:
+                self.oFD = metaDict['original_files_dir']
+            except Exception as e:
+                print("Error parsing 'original_files_dir' for config: META. Exception recieved: '"+str(e)+"'")
+                self.oFD = None
+
 
 def initialize(basedir):
     config = configparser.ConfigParser()
@@ -69,8 +224,11 @@ def initialize(basedir):
     #Run in loop for the rest of the keys in config
     for i in range(len(matKeys)):
         mat = materialConfig()
-        mat.parseMaterial(config[matKeys[i]])
+        mat.parseMaterial(matKeys[i],config[matKeys[i]])
         materials.append(mat)
+
+    #Validate meta for errors
+    meta.validateMeta()
 
     #Return our meta and our material configs
     return meta,materials
