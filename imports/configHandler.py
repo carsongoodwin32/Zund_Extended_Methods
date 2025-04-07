@@ -86,7 +86,7 @@ class metaConfig:
             if(self.oFD == None):
                 print("settings.cfg validation failed: original_files_dir not set while delete_files_after_processing = false")
             else:
-                if(self.oFD == self.hD or self.oFD == oD):  
+                if(self.oFD == self.hD or self.oFD == self.oD):  
                     print("settings.cfg validation failed: original_files_dir is equal to hotfolder_dir or output_dir")
 
     def parseMeta(self,metaDict):
