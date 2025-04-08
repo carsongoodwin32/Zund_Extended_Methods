@@ -4,6 +4,7 @@ import imports.argHandler as aH
 import imports.configHandler as cH
 import imports.logHandler as lH
 import imports.testHandler as tH
+import imports.mainAlgorithm as mA
 
 basedir = ""
 
@@ -29,7 +30,7 @@ def main():
         # This will kill the program if the tests fail
         fail = tH.initTests(basedir,metaConfig)
         if fail:
-            exit(0)
+            exit(-1)
 
     # Initialize the logger if configInfo calls for it.
     if metaConfig.lTF:
@@ -42,9 +43,11 @@ def main():
     #We have all the permissions we want/need for all relevant directories.
     #Everything except for the main code has been initialized (configs, loggers, testers, etc)
 
-
-
-    return 0
+    #Lets run the main algorithm now
+    result = mA.startAlgo(metaConfig,materialConfig,lH.logObject)
+    #In the case that we're not watching a hotfolder, we can return a success value.
+    lH.logObject.log_string("Main Algorithm Exited. Ending Program...")
+    exit(result)
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,6 @@
 import configparser
 import os
+import ast
 
 class materialConfig:
     def __init__(self,material=None,method_file_path=None,change_type_on=None,delete_layers=None,post_process_cmd=None):
@@ -19,7 +20,7 @@ class materialConfig:
 
             if(not mfpExist):
                 print("settings.cfg validation failed for config '"+self.mat+"': method_file "+self.mFP+" is inaccessible. Check that the provided file exists.")
-                exit(0)
+                exit(-1)
         return
 
     def parseMaterial(self,mat,matDict):
@@ -88,25 +89,29 @@ class metaConfig:
         if(self.lTF):
             if(self.pTL == None):
                 print("settings.cfg validation failed: path_to_log not set while log_to_file = true")
-                exit(0)
+                exit(-1)
 
         if(self.wH):
             if(self.hD == None):
                 print("settings.cfg validation failed: hotfolder_dir not set while watch_hotfolder = true")
-                exit(0)
+                exit(-1)
+
+        if(self.aES.lower() == ".zcc"):
+            print("settings.cfg validation failed: append_extension_string cannot be '.zcc'")
+            exit(-1)
 
         if(self.oD == None):
             print("settings.cfg validation failed: output_dir not set")
-            exit(0)
-
+            exit(-1)
+        
         if(not self.dFAP):
             if(self.oFD == None):
                 print("settings.cfg validation failed: original_files_dir not set while delete_files_after_processing = false")
-                exit(0)           
+                exit(-1)           
             else:
                 if(self.oFD == self.hD or self.oFD == self.oD):  
                     print("settings.cfg validation failed: original_files_dir is equal to hotfolder_dir or output_dir")
-                    exit(0)
+                    exit(-1)
 
         #Validate paths and files defined in META config
         if(self.lTF):
@@ -127,7 +132,7 @@ class metaConfig:
             
             if(not logExist):
                 print("settings.cfg validation failed: path_to_log directory inaccessible. Check that the provided directory exists.")
-                exit(0)
+                exit(-1)
         
         if(self.wH):
             hotfolderExist = False
@@ -138,7 +143,7 @@ class metaConfig:
             
             if(not hotfolderExist):
                 print("settings.cfg validation failed: hotfolder_dir directory inaccessible. Check that the provided directory exists.")
-                exit(0)
+                exit(-1)
 
         if(not self.dFAP):
             ofdExist = False
@@ -149,7 +154,7 @@ class metaConfig:
             
             if(not ofdExist):
                 print("settings.cfg validation failed: original_files_dir directory inaccessible. Check that the provided directory exists.")
-                exit(0)
+                exit(-1)
 
         outputExist = False
         
@@ -159,7 +164,7 @@ class metaConfig:
         
         if(not outputExist):
             print("settings.cfg validation failed: output_dir directory inaccessible. Check that the provided directory exists.")
-            exit(0)
+            exit(-1)
         
 
 
@@ -233,10 +238,10 @@ class metaConfig:
 
         if 'append_extension_string' in metaDict:
             try:
-                self.lB = metaDict['append_extension_string']
+                self.aES = metaDict['append_extension_string']
             except Exception as e:
                 print("Error parsing 'append_extension_string' for config: META. Exception recieved: '"+str(e)+"'")
-                self.lB = '.zem'
+                self.aES = '.zem'
 
         if 'hotfolder_dir' in metaDict:
             try:
@@ -267,24 +272,24 @@ def initialize(basedir):
     filepath = basedir+os.sep+"settings.cfg"
     if not os.path.exists(filepath) and not os.path.isfile(filepath):
         print(str(filepath)+" does not exist! Exiting.")
-        exit(0)
+        exit(-1)
 
     #Read the config for further processing
     try:
         config.read(filepath)
     except:
         print("Fatal error proccessing config: " +str(filepath))
-        exit(0)
+        exit(-1)
     
     #Make sure the config has some readable section in it
     if not len(config.sections()) > 0:
         print("Empty or corrupt config: " +str(filepath))
-        exit(0)
+        exit(-1)
 
     #Make sure META exists. It's one of the only required sections
     if not 'META' in config:
         print("Missing META section in config: " +str(filepath))
-        exit(0)
+        exit(-1)
 
     #Make an empty meta object and parse the META config
     meta = metaConfig()
