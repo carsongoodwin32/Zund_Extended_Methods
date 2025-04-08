@@ -33,7 +33,16 @@ def main():
 
     # Initialize the logger if configInfo calls for it.
     if metaConfig.lTF:
-        lH.initLogs()
+        lH.initLogs(metaConfig.pTL,metaConfig.lB)
+        lH.logObject.log_string("Logger set up successfully!")
+
+    #At this point in the code we can now make the assumptions that:
+    #'META' config is !syntactically! correct.
+    #material specific, common, and default configs are !syntactically! correct.
+    #We have all the permissions we want/need for all relevant directories.
+    #Everything except for the main code has been initialized (configs, loggers, testers, etc)
+
+
 
     return 0
 

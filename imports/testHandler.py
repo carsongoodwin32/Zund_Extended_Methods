@@ -170,4 +170,6 @@ def initTests(basedir,metaConfig):
         testResults.extend(rwdTestAtPath(metaConfig.oFD))
     else:
         testResults.extend([None,None,None])
-    return exportEnvironmentReport(basedir,testResults)
+        
+    #Flip bool for return, we expect True when we've failed.
+    return not exportEnvironmentReport(basedir,testResults)
