@@ -14,11 +14,11 @@ class materialConfig:
             mfpExist = False
 
             #Check if the path is a file
-            if os.path.isfile(self.mfp):
+            if os.path.isfile(self.mFP):
                 mfpExist = True
 
             if(not mfpExist):
-                print("settings.cfg validation failed for config '"+self.mat+"': method_file "+self.mfp+" is inaccessible. Check that the provided file exists.")
+                print("settings.cfg validation failed for config '"+self.mat+"': method_file "+self.mFP+" is inaccessible. Check that the provided file exists.")
                 exit(0)
         return
 
