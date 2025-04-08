@@ -10,6 +10,16 @@ class materialConfig:
         self.pPC = post_process_cmd
 
     def validateMaterial(self):
+        if (self.mFP != None):
+            mfpExist = False
+
+            #Check if the path is a file
+            if os.path.isfile(self.mfp):
+                mfpExist = True
+
+            if(not mfpExist):
+                print("settings.cfg validation failed for config '"+self.mat+"': method_file "+self.mfp+" is inaccessible. Check that the provided file exists.")
+                exit(0)
         return
 
     def parseMaterial(self,mat,matDict):
@@ -116,7 +126,7 @@ class metaConfig:
                 logExist = True
             
             if(not logExist):
-                print("settings.cfg validation failed: path_to_log directory unaccessible. Check that the provided directory exists.")
+                print("settings.cfg validation failed: path_to_log directory inaccessible. Check that the provided directory exists.")
                 exit(0)
         
         if(self.wH):
@@ -127,7 +137,7 @@ class metaConfig:
                 hotfolderExist = True
             
             if(not hotfolderExist):
-                print("settings.cfg validation failed: hotfolder_dir directory unaccessible. Check that the provided directory exists.")
+                print("settings.cfg validation failed: hotfolder_dir directory inaccessible. Check that the provided directory exists.")
                 exit(0)
 
         if(not self.dFAP):
@@ -138,7 +148,7 @@ class metaConfig:
                 ofdExist = True
             
             if(not ofdExist):
-                print("settings.cfg validation failed: original_files_dir directory unaccessible. Check that the provided directory exists.")
+                print("settings.cfg validation failed: original_files_dir directory inaccessible. Check that the provided directory exists.")
                 exit(0)
 
         outputExist = False
@@ -148,7 +158,7 @@ class metaConfig:
             outputExist = True
         
         if(not outputExist):
-            print("settings.cfg validation failed: output_dir directory unaccessible. Check that the provided directory exists.")
+            print("settings.cfg validation failed: output_dir directory inaccessible. Check that the provided directory exists.")
             exit(0)
         
 
