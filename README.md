@@ -1,6 +1,8 @@
 # Zund_Extended_Methods
 
-A quick Python script to take in .zcc files and apply a standard list of extended methods (even bypassing the limits of ZCC and friends)
+A Python application to take in .zcc files and apply a standard list of extended methods (even bypassing the limits of ZCC and friends)
+
+This also stands as a reference for how I would build a professional, self-contained, production ready, maintainable Python application.
 
 ## Description
 

@@ -32,7 +32,7 @@ def exportEnvironmentReport(basedir,testResults):
     
     try:
         for i in range(len(testStrings)):
-            res = "N/A"
+            res = ""
             if testResults[i] == True:
                 res = "Passed"
             elif testResults[i] == False:
@@ -59,10 +59,87 @@ def exportEnvironmentReport(basedir,testResults):
         return True
 
 def rwdTestAtPath(path):
-    return [True,True,True]
+    testResults = []
+    try:
+        f = open(path+os.sep+"tmp.tmp","a")
+        f.write("\ntest")
+        f.close()
+
+        testResults.append(True)
+    except Exception as e:
+        print("Fatal error opening tempfile for writing in "+path+" : "+str(e))
+        return [False,None,None]
+
+    try:
+        f = open(path+os.sep+"tmp.tmp","r")
+        f.readlines()
+        f.close()
+        
+        testResults.append(True)
+    except Exception as e:
+        print("Fatal error opening tempfile for reading in "+path+" : "+str(e))
+        return [testResults[0],False,None]
+
+    try:
+        os.remove(path+os.sep+"tmp.tmp")
+        testResults.append(True)
+    except Exception as e:
+        print("Fatal error deleting tempfile in "+path+" : "+str(e))
+        return [testResults[0],testResults[1],False]
+
+    return testResults
 
 def testLogDir(path):
-    return path,[True,True,True]
+    testResults = []
+    basedir = os.path.dirname(path)
+
+    file_exist = os.path.isfile(path)
+    lines = None
+
+    try:
+        if path[-1] == os.sep or path[-1] == '/' or path[-1] == '\\':
+            f = open(path+os.sep+"log.txt","a")
+        else:
+            f = open(path,"a")
+        f.write("\ntest")
+        f.close()
+
+        testResults.append(True)
+    except Exception as e:
+        print("Fatal error opening logfile for writing: "+str(e))
+        return os.path.dirname(path),[False,None,None]
+
+    try:
+        if path[-1] == os.sep or path[-1] == '/' or path[-1] == '\\':
+            f = open(path+os.sep+"log.txt","r")
+        else:
+            f = open(path,"r")
+        lines = f.readlines()
+        f.close()
+        
+        testResults.append(True)
+    except Exception as e:
+        print("Fatal error opening logfile for reading: "+str(e))
+        return os.path.dirname(path),[testResults[0],False,None]
+
+    try:
+        if file_exist:
+            f = open(path,"w")
+            f.writelines(lines[:-1])
+            f.close()
+
+            testResults.append(None)
+        else:
+            if path[-1] == os.sep or path[-1] == '/' or path[-1] == '\\':
+                os.remove(path+os.sep+"log.txt")
+            else:
+                os.remove(path)
+            testResults.append(True)
+    except Exception as e:
+        print("Fatal error deleting logfile: "+str(e))
+        return os.path.dirname(path),[testResults[0],testResults[1],False]
+
+    return basedir,testResults
 
 def initTests(basedir,metaConfig):
     testResults = []
