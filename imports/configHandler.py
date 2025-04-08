@@ -9,6 +9,9 @@ class materialConfig:
         self.dL = delete_layers
         self.pPC = post_process_cmd
 
+    def validateMaterial(self):
+        return
+
     def parseMaterial(self,mat,matDict):
         self.mat = mat
         #Check if method_file even exists in this dict
@@ -71,23 +74,84 @@ class metaConfig:
         self.oFD = original_files_dir
 
     def validateMeta(self):
+        #Validate dependency rules of META config
         if(self.lTF):
             if(self.pTL == None):
                 print("settings.cfg validation failed: path_to_log not set while log_to_file = true")
-        
+                exit(0)
+
         if(self.wH):
             if(self.hD == None):
                 print("settings.cfg validation failed: hotfolder_dir not set while watch_hotfolder = true")
-        
+                exit(0)
+
         if(self.oD == None):
             print("settings.cfg validation failed: output_dir not set")
+            exit(0)
 
         if(not self.dFAP):
             if(self.oFD == None):
                 print("settings.cfg validation failed: original_files_dir not set while delete_files_after_processing = false")
+                exit(0)           
             else:
                 if(self.oFD == self.hD or self.oFD == self.oD):  
                     print("settings.cfg validation failed: original_files_dir is equal to hotfolder_dir or output_dir")
+                    exit(0)
+
+        #Validate paths and files defined in META config
+        if(self.lTF):
+            logExist = False
+
+            #Check if the path is a file
+            if os.path.isfile(self.pTL):
+                logExist = True
+
+            #Check if the path containing the file exists
+            dir_path = os.path.dirname(self.pTL)
+            if os.path.isdir(dir_path):
+                logExist = True
+
+            #Check if the path is a directory
+            if os.path.isdir(self.pTL):
+                logExist = True
+            
+            if(not logExist):
+                print("settings.cfg validation failed: path_to_log directory unaccessible. Check that the provided directory exists.")
+                exit(0)
+        
+        if(self.wH):
+            hotfolderExist = False
+
+            #Check if the path is a directory
+            if os.path.isdir(self.hD):
+                hotfolderExist = True
+            
+            if(not hotfolderExist):
+                print("settings.cfg validation failed: hotfolder_dir directory unaccessible. Check that the provided directory exists.")
+                exit(0)
+
+        if(not self.dFAP):
+            ofdExist = False
+
+            #Check if the path is a directory
+            if os.path.isdir(self.oFD):
+                ofdExist = True
+            
+            if(not ofdExist):
+                print("settings.cfg validation failed: original_files_dir directory unaccessible. Check that the provided directory exists.")
+                exit(0)
+
+        outputExist = False
+        
+        #Check if the path is a directory
+        if os.path.isdir(self.oD):
+            outputExist = True
+        
+        if(not outputExist):
+            print("settings.cfg validation failed: output_dir directory unaccessible. Check that the provided directory exists.")
+            exit(0)
+        
+
 
     def parseMeta(self,metaDict):
         if 'test_environment' in metaDict:
@@ -216,6 +280,9 @@ def initialize(basedir):
     meta = metaConfig()
     meta.parseMeta(config['META'])
 
+    #Validate meta for errors
+    meta.validateMeta()
+
     #Now we can parse all the materials into an array holding their own instances of materialConfig
     materials = []
     #Remove META since we don't want to parse it twice
@@ -225,10 +292,8 @@ def initialize(basedir):
     for i in range(len(matKeys)):
         mat = materialConfig()
         mat.parseMaterial(matKeys[i],config[matKeys[i]])
+        mat.validateMaterial()
         materials.append(mat)
-
-    #Validate meta for errors
-    meta.validateMeta()
 
     #Return our meta and our material configs
     return meta,materials
