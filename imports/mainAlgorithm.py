@@ -1,3 +1,5 @@
+from lxml import etree
+
 def log_algo_opts(metaConfig,logObject):
     logObject.log_string("Main Algorithm Started!")
     logObject.log_string("[META] Meta Configured with:")
@@ -26,4 +28,5 @@ def startAlgo(metaConfig,materialConfig,logObject):
     log_algo_opts(metaConfig,logObject)
     log_mat_opts(materialConfig,logObject)
     #Begin Processing
+
     return 0
