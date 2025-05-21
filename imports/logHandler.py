@@ -19,7 +19,7 @@ class logger:
                 f.write(timestamp_as_string()+log_str+'\n')
             print("[LOGGER]: "+log_str)
         except Exception as e:
-            print("logger.log_string() hit an exception: "+str(e))
+            print("logger.log_string() hit an exception while logging: "+str(e))
         return
     
     def activate_logger(self,path_to_log,log_behavior):
@@ -33,7 +33,7 @@ class logger:
             f = open(path_to_log,f_o)
             f.close()
         except Exception as e:
-            print("logger.activate_logger() hit an exception: "+str(e))
+            print("logger.activate_logger() hit an exception trying to activate: "+str(e))
             return
         
         self.lA = True

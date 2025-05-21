@@ -94,6 +94,8 @@ def writeNewFile(tree,outputFile):
     tree.write(outputFile)
 
 def postProcess(outputFile,pPCs):
+    if pPCs:
+        print("post process not implemented yet.")
     return
 
 def algoEngine(inputFile,outputFile,method_files,overwrite_methods,change_type_on,delete_layers,post_process_cmds):
@@ -128,24 +130,66 @@ def algoEngine(inputFile,outputFile,method_files,overwrite_methods,change_type_o
 def getOutputName(inputFile,appendExtensionString,outputDir):
     return outputDir+inputFile.split(".")[0]+appendExtensionString+"."+"".join(inputFile.split(".")[1:])
 
-def retrieveMatHits(inputFile,hotfolderDir):
-    matHits = []
+def parseFileForMaterial(inputFile,hotfolderDir):
+    return materialStr
 
+def retrieveMatHits(inputFile,hotfolderDir):
+    #Setup the holder for our hits
+    matHits = []
+    defaultMat = None
+
+    #Parse the file for what material it contains
+    materialStr = parseFileForMaterial(inputFile,hotfolderDir)
+
+    #Check if any materials match the materialStr
+    for mat in materialConfig:
+        if (materialStr in mat.mat) or (mat.mat.lower() == "COMMON".lower()):
+            matHits.append(mat)
+        if (mat.mat.lower()=="DEFAULT".lower()):
+            defaultMat = mat
+    
+    #In the case where we have a default mat
+    if defaultMat != None:
+        #Check if we have less than or equal to one hit
+        if len(matHits) <= 1:
+            #Check if the mat is common, if it is, we add our default mat
+            try:
+                if matHits[0].mat.lower() == "COMMON".lower():
+                    matHits.append(defaultMat)
+            except:
+                matHits.append(defaultMat)
+
+    #Setup the containers for our outputs
+    method_files = []
+    change_type_on = []
+    delete_layers = []
+    post_process_cmds = []
+
+    #Loops through mats in what we've found in the file
     for mats in matHits:
-    return [],[],[]
+        method_files.append(mats.mFP)
+        change_type_on.append(mats.cTO)
+        delete_layers.extend(mats.dL)
+        post_process_cmds.append(mats.pPC)
+
+    return method_files, change_type_on, delete_layers, post_process_cmds
 
 def startAlgo(metaConfig,materialConfig,logObject):
     #Show configuration in logs before processing anything
     log_algo_opts(metaConfig,logObject)
     log_mat_opts(materialConfig,logObject)
+
     #Set Global config options for the processing engine
     overwriteMethods = metaConfig.oM
+    doNotReprocess = []
+
     #Begin Processing
     try:
         allFiles = [f for f in listdir(metaConfig.hD) if isfile(join(metaConfig.hD, f))]
     except as Exception e:
         logObject.log_string("Could not start main algorithm. Error getting files from hotfolder_dir.")
         logObject.log_string("Error message recieved: "+str(e))
+        logObject.log_string("Exiting program...")
         return 0
 
     # Valid options could be metaConfig.wH, metaConfig.rP, neither, or both
@@ -160,20 +204,24 @@ def startAlgo(metaConfig,materialConfig,logObject):
             for inFile in allFiles:
                 logObject.log_string("Started processing files in hotfolder_dir: "+str(metaConfig.hD))
                 creation_time = os.path.getctime(inFile)
-                if creation_time >= watchTime and not ".zem" in inFile:
+                if creation_time >= watchTime and not ".zem" in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
                     logObject.log_string("Started processing file: "+str(inFile))
                     outFile = getOutputName(inFile,metaConfig.aES,metaConfig.hD,metaConfig.oD)
-                    # methodFiles, change_type_on, delete_layers, postProcessCMDs = retrieveMatHits(inFile)
-                    tempFile = algoEngine(inFile,outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
-                    logObject.log_string("Saved processed file as: "+str(tempFile))
-                    if metaConfig.dFAP:
-                        logObject.log_string("Deleting original file: "+str(inFile))
-                        deleteFile(inFile,metaConfig.hD)
+                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(inFile)
+                    if methodFiles:
+                        tempFile = algoEngine(inFile,outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
+                        logObject.log_string("Saved processed file as: "+str(tempFile))
+                        if metaConfig.dFAP:
+                            logObject.log_string("Deleting original file: "+str(inFile))
+                            deleteFile(inFile,metaConfig.hD)
+                        else:
+                            logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ "to "+str(metaConfig.oFD))
+                            moveFile(inFile,metaConfig.hD,metaConfig.oFD)
+                        logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
+                        renameFile(tempFile,outFile)
                     else:
-                        logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ "to "+str(metaConfig.oFD))
-                        moveFile(inFile,metaConfig.hD,metaConfig.oFD)
-                    logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
-                    renameFile(tempFile,outFile)
+                        doNotReprocess.append(inFile)
+                        logObject.log_string("No rules detected for: "+str(inFile))
                     logObject.log_string("Finished processing file: "+str(inFile))
             if not metaConfig.wH:
                 logObject.log_string("Finished processing all  files in hotfolder_dir: "+str(metaConfig.hD)+" Exiting program...")
