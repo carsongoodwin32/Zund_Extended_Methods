@@ -178,3 +178,4 @@ cython_debug/
 #ZEM specific stuff
 testing/
 *.txt
+algo.py

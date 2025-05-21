@@ -70,7 +70,7 @@ class materialConfig:
 
 class metaConfig:
     def __init__(self, test_environment=False, log_to_file=False, path_to_log=None, log_behavior='append', watch_hotfolder=False, 
-             retroactively_process=False, delete_file_after_processing=False, append_extension_string='.zem', 
+             retroactively_process=False, overwrite_methods=True, delete_file_after_processing=False, append_extension_string='.zem', 
              hotfolder_dir=None, output_dir=None, original_files_dir=None):
         self.tE = test_environment
         self.lTF = log_to_file
@@ -78,6 +78,7 @@ class metaConfig:
         self.lB = log_behavior
         self.wH = watch_hotfolder
         self.rP = retroactively_process
+        self.oM = overwrite_methods
         self.dFAP = delete_file_after_processing
         self.aES = append_extension_string
         self.hD = hotfolder_dir
@@ -225,6 +226,16 @@ class metaConfig:
             except Exception as e:
                 print("Error parsing 'retroactively_process' for config: META. Exception recieved: '"+str(e)+"'")
                 self.rP = False
+
+        if 'overwrite_methods' in metaDict:
+            try:
+                if metaDict['overwrite_methods'].lower() == "true":
+                    self.oM = True
+                else:
+                    self.oM = False
+            except Exception as e:
+                print("Error parsing 'overwrite_methods' for config: META. Exception recieved: '"+str(e)+"'")
+                self.oM = True
 
         if 'delete_file_after_processing' in metaDict:
             try:
