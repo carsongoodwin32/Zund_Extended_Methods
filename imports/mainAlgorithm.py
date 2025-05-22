@@ -28,6 +28,7 @@ def log_mat_opts(materialConfig,logObject):
     return
 
 def consolidateMethods(method_files):
+    # Consolidate all of the method files into one array
     newMethods = []
 
     for i in range(len(method_files)):
@@ -39,18 +40,22 @@ def consolidateMethods(method_files):
     return newMethods
 
 def clearMethods(root):
+    # Find the methods tag and remove all of the method attributes under it
     methods = root.find("./Methods")
     if methods != None:
         for method in methods.findall("Method"):
             methods.remove(method)
 
 def addMethods(root,newMethods):
+    # Append our new methods under the methods tag
     methods = root.find("./Methods")
 
     for method in newMethods:
         methods.append(method)
 
 def findBestMethodMatch(method,methods):
+    # Generally speaking we can just rely on the fact that methods
+    # have names that match their geometry operation
     curr_method_name = method.attrib['Name']
 
     for child in methods:
@@ -63,6 +68,10 @@ def findBestMethodMatch(method,methods):
     return method.attrib['Type']
 
 def renameTypes(root,cTO):
+    # We run through every operation in the Geometry tag
+    # If change type on has items that match the ones 
+    # in the Geometry operations Type field
+    # we can find the next best match and rename it.
     methods = root.find("./Methods")
 
     geometry = root.find("./Geometry")
@@ -77,6 +86,8 @@ def renameTypes(root,cTO):
                     continue
 
 def removeLayers(root,dL):
+    # Remove any operation in the Geometry tag that has a Name
+    # field that matches an item in Delete Layers
     geometry = root.find("./Geometry")
     if geometry != None:
         for outline in geometry.findall("Outline"):
@@ -91,6 +102,7 @@ def removeLayers(root,dL):
                 geometry.remove(outline)
 
 def writeNewFile(tree,outputFile):
+    #Write the tree to the specified filepath
     tree.write(outputFile)
 
 def postProcess(outputFile,pPCs):
@@ -99,6 +111,7 @@ def postProcess(outputFile,pPCs):
     return
 
 def algoEngine(inputFile,outputFile,method_files,overwrite_methods,change_type_on,delete_layers,post_process_cmds):
+    #Parse the xml file into its root
     tree = et.parse(inputFile)
     root = tree.getroot()[0]
 
@@ -131,7 +144,25 @@ def getOutputName(inputFile,appendExtensionString,outputDir):
     return outputDir+inputFile.split(".")[0]+appendExtensionString+"."+"".join(inputFile.split(".")[1:])
 
 def parseFileForMaterial(inputFile,hotfolderDir):
+    #Parse the xml file into its root
+    tree = et.parse(inputFile)
+    root = tree.getroot()[0]
+
+    #We're looking for the name property of the Material tag
+    material = root.find("./Material")
+    materialStr = material.attrib['Name']
+
+    #Return what we've found
     return materialStr
+
+def deleteFile():
+    return
+
+def moveFile():
+    return
+
+def renameFile():
+    return
 
 def retrieveMatHits(inputFile,hotfolderDir):
     #Setup the holder for our hits
@@ -143,7 +174,7 @@ def retrieveMatHits(inputFile,hotfolderDir):
 
     #Check if any materials match the materialStr
     for mat in materialConfig:
-        if (materialStr in mat.mat) or (mat.mat.lower() == "COMMON".lower()):
+        if (materialStr.lower() in mat.mat.lower()) or (mat.mat.lower() == "COMMON".lower()):
             matHits.append(mat)
         if (mat.mat.lower()=="DEFAULT".lower()):
             defaultMat = mat
@@ -189,7 +220,6 @@ def startAlgo(metaConfig,materialConfig,logObject):
     except as Exception e:
         logObject.log_string("Could not start main algorithm. Error getting files from hotfolder_dir.")
         logObject.log_string("Error message recieved: "+str(e))
-        logObject.log_string("Exiting program...")
         return 0
 
     # Valid options could be metaConfig.wH, metaConfig.rP, neither, or both
@@ -200,36 +230,56 @@ def startAlgo(metaConfig,materialConfig,logObject):
             if metaConfig.rP:
                 # If we're retroactively processing, set watchDate to the Unix epoch.
                 watchTime = 0
+            logObject.log_string("Started processing files in hotfolder_dir: "+str(metaConfig.hD))
             #Run the algorithm Engine with our specified settings on the found file
             for inFile in allFiles:
-                logObject.log_string("Started processing files in hotfolder_dir: "+str(metaConfig.hD))
-                creation_time = os.path.getctime(inFile)
-                if creation_time >= watchTime and not ".zem" in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
+                #Get the last accessed time of the file
+                try: 
+                    access_time = os.path.getatime(inFile)
+                except:
+                    continue
+                # If our access time is in the range we want, it's not a processed file, 
+                # it is a .zcc file, and we haven't marked this as not to process
+                if access_time >= watchTime and not metaConfig.aES in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
                     logObject.log_string("Started processing file: "+str(inFile))
+                    # Get the output name of the file
+                    # This should be returned as a full path string instead of just a file name
                     outFile = getOutputName(inFile,metaConfig.aES,metaConfig.hD,metaConfig.oD)
-                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(inFile)
+                    # Read the files material tag and retrieve all hits for all the different attributes
+                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(metaConfig.hD+os.sep+inFile)
                     if methodFiles:
-                        tempFile = algoEngine(inFile,outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
+                        # Run the main algorithm on the file, saving it as a temp file (so we don't overwrite the original)
+                        tempFile = algoEngine(metaConfig.hD+os.sep+inFile,outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
                         logObject.log_string("Saved processed file as: "+str(tempFile))
                         if metaConfig.dFAP:
+                            # Go ahead and delete the original file
                             logObject.log_string("Deleting original file: "+str(inFile))
                             deleteFile(inFile,metaConfig.hD)
                         else:
+                            # Move the original file to the oFD dir
                             logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ "to "+str(metaConfig.oFD))
                             moveFile(inFile,metaConfig.hD,metaConfig.oFD)
+                        # Now we can rename the temp file to the output name
                         logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
                         renameFile(tempFile,outFile)
                     else:
+                        # If method files returns [] or None or something like that
+                        # mark this file as not to reprocess.
                         doNotReprocess.append(inFile)
                         logObject.log_string("No rules detected for: "+str(inFile))
+                    # We've finished running rule on this file, start another loop or exit.
                     logObject.log_string("Finished processing file: "+str(inFile))
             if not metaConfig.wH:
-                logObject.log_string("Finished processing all  files in hotfolder_dir: "+str(metaConfig.hD)+" Exiting program...")
+                # We can leave the loop and exit app if we're not watching the hotfolder
+                logObject.log_string("Finished processing all  files in hotfolder_dir: "+str(metaConfig.hD))
                 break
             else:
+                # If we are watching the hotfolder, get the most recent file listing in the directory
                 allFiles = [f for f in listdir(metaConfig.hD) if isfile(join(metaConfig.hD, f))]
         else:
-            logObject.log_string("Current settings prevent any files from being processed. Exiting program...")
+            # if wH and rP are false, we can't do anything so we'll exit. 
+            logObject.log_string("Current settings prevent any files from being processed.")
             break
 
+    #This should never actually get hit in the wH case.
     return 0
