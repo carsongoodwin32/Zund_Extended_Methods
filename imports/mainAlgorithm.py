@@ -4,6 +4,7 @@ from os.path import isfile, join
 import shutil
 import time
 import datetime
+import ast
 
 def log_algo_opts(metaConfig,logObject):
     logObject.log_string("Main Algorithm Started!")
@@ -190,12 +191,12 @@ def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
 
     # Loops through mats in what we've found in the file
     for mats in matHits:
-        print(mats.mat)
         if mats.mFP != None:
             method_files.append(mats.mFP)
             change_type_on.append(mats.cTO)
             if mats.dL != None:
-                delete_layers.extend(mats.dL)
+                for item in mats.dL:
+                    delete_layers.extend(ast.literal_eval(item))
             post_process_cmds.append(mats.pPC)
 
     return method_files, change_type_on, delete_layers, post_process_cmds
@@ -248,6 +249,9 @@ def startAlgo(metaConfig,materialConfig,logObject):
                             shutil.move(os.path.join(metaConfig.hD,inFile),metaConfig.oFD)
                         # Now we can rename the temp file to the output name
                         logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
+                        # We will always overwrite a file in the output, else we will error out.
+                        if(os.path.isfile(outFile)):
+                            os.remove(outFile)
                         os.rename(tempFile,outFile)
                     else:
                         # If method files returns [] or None or something like that
