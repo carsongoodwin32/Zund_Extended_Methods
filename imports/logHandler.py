@@ -41,7 +41,7 @@ class logger:
         self.pTL = path_to_log
         return
 
-#Define a global logObject that everyone can access.
+# Define a global logObject that everyone can access.
 logObject = logger()
 
 def initLogs(path,log_behavior):

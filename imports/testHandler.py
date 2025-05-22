@@ -21,7 +21,7 @@ def exportEnvironmentReport(basedir,testResults):
     if None in testResults:
         print("Some tests skipped due to 'META' config settings!")
 
-    #Output the file here now that we've shown all warnings and we know we have all test results
+    # Output the file here now that we've shown all warnings and we know we have all test results
     env_file = basedir+os.sep+"environment_report.txt"
 
     try:
@@ -143,33 +143,33 @@ def testLogDir(path):
 
 def initTests(basedir,metaConfig):
     testResults = []
-    #Tests we need to run:
-    #Reading, Writing, Deleting from basedir
+    # Tests we need to run:
+    # Reading, Writing, Deleting from basedir
     testResults.extend(rwdTestAtPath(basedir))
 
     if(metaConfig.lTF):
-        #Reading, Writing, Deleting the log file
+        # Reading, Writing, Deleting the log file
         logDir,result = testLogDir(metaConfig.pTL)
         testResults.extend(result)
-        #Reading, Writing, Deleting the log dir
+        # Reading, Writing, Deleting the log dir
         testResults.extend(rwdTestAtPath(logDir))
     else:
         testResults.extend([None,None,None,None,None,None])
 
     if(metaConfig.wH):
-        #Reading, Writing, Deleting from the hotfolder
+        # Reading, Writing, Deleting from the hotfolder
         testResults.extend(rwdTestAtPath(metaConfig.hD))
     else:
         testResults.extend([None,None,None])
 
-    #Reading, Writing, Deleting from the output dir
+    # Reading, Writing, Deleting from the output dir
     testResults.extend(rwdTestAtPath(metaConfig.oD))
 
     if(not metaConfig.dFAP):
-        #Reading, Writing, Deleting from the original files dir
+        # Reading, Writing, Deleting from the original files dir
         testResults.extend(rwdTestAtPath(metaConfig.oFD))
     else:
         testResults.extend([None,None,None])
         
-    #Flip bool for return, we expect True when we've failed.
+    # Flip bool for return, we expect True when we've failed.
     return not exportEnvironmentReport(basedir,testResults)

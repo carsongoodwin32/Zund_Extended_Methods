@@ -14,7 +14,7 @@ class materialConfig:
         if (self.mFP != None):
             mfpExist = False
 
-            #Check if the path is a file
+            # Check if the path is a file
             if os.path.isfile(self.mFP):
                 mfpExist = True
 
@@ -25,9 +25,9 @@ class materialConfig:
 
     def parseMaterial(self,mat,matDict):
         self.mat = mat
-        #Check if method_file even exists in this dict
+        # Check if method_file even exists in this dict
         if 'method_file' in matDict:
-            #Basic checks to see if it's actually a file
+            # Basic checks to see if it's actually a file
             try:
                 if isinstance(matDict['method_file'],str) and len(matDict['method_file'])>0 and matDict['method_file'][-4:] == '.xml':
                     self.mFP = matDict['method_file']
@@ -35,9 +35,9 @@ class materialConfig:
                 print("Error parsing 'method_file' for config "+mat+". Exception recieved: '"+str(e)+"'")
                 self.mFP = None
 
-        #Check if change_type_on even exists in this dict
+        # Check if change_type_on even exists in this dict
         if 'change_type_on' in matDict:
-            #I don't think this needs to be wrapped in a try except, but whatever
+            # I don't think this needs to be wrapped in a try except, but whatever
             try:
                 if isinstance(matDict['change_type_on'],str):
                     self.cTO = matDict['change_type_on']
@@ -45,10 +45,10 @@ class materialConfig:
                 print("Error parsing 'change_type_on' for config "+mat+". Exception recieved: '"+str(e)+"'")
                 self.cTO = None
         
-        #Check if delete_layers even exists in this dict
+        # Check if delete_layers even exists in this dict
         if 'delete_layers' in matDict:
-            #configparser handles arrays nicely.
-            #This is undocumented, but we'll also handle just a straight string
+            # configparser handles arrays nicely.
+            # This is undocumented, but we'll also handle just a straight string
             try:
                 if isinstance(matDict['delete_layers'],str):
                     self.dL = [matDict['delete_layers']]
@@ -58,9 +58,9 @@ class materialConfig:
                 print("Error parsing  'delete_layers' for config "+mat+". Exception recieved: '"+str(e)+"'")
                 self.dL = None
 
-        #Check if post_process_cmd even exists in this dict
+        # Check if post_process_cmd even exists in this dict
         if 'post_process_cmd' in matDict:
-            #I dont think this one needs try except either
+            # I dont think this one needs try except either
             try:
                 if (isinstance(matDict['post_process_cmd'],str) and len(matDict['method_file'])>0):
                     self.pPC = matDict['post_process_cmd']
@@ -86,7 +86,7 @@ class metaConfig:
         self.oFD = original_files_dir
 
     def validateMeta(self):
-        #Validate dependency rules of META config
+        # Validate dependency rules of META config
         if(self.lTF):
             if(self.pTL == None):
                 print("settings.cfg validation failed: path_to_log not set while log_to_file = true")
@@ -114,20 +114,20 @@ class metaConfig:
                     print("settings.cfg validation failed: original_files_dir is equal to hotfolder_dir or output_dir")
                     exit(-1)
 
-        #Validate paths and files defined in META config
+        # Validate paths and files defined in META config
         if(self.lTF):
             logExist = False
 
-            #Check if the path is a file
+            # Check if the path is a file
             if os.path.isfile(self.pTL):
                 logExist = True
 
-            #Check if the path containing the file exists
+            # Check if the path containing the file exists
             dir_path = os.path.dirname(self.pTL)
             if os.path.isdir(dir_path):
                 logExist = True
 
-            #Check if the path is a directory
+            # Check if the path is a directory
             if os.path.isdir(self.pTL):
                 logExist = True
             
@@ -138,7 +138,7 @@ class metaConfig:
         if(self.wH):
             hotfolderExist = False
 
-            #Check if the path is a directory
+            # Check if the path is a directory
             if os.path.isdir(self.hD):
                 hotfolderExist = True
             
@@ -149,7 +149,7 @@ class metaConfig:
         if(not self.dFAP):
             ofdExist = False
 
-            #Check if the path is a directory
+            # Check if the path is a directory
             if os.path.isdir(self.oFD):
                 ofdExist = True
             
@@ -159,7 +159,7 @@ class metaConfig:
 
         outputExist = False
         
-        #Check if the path is a directory
+        # Check if the path is a directory
         if os.path.isdir(self.oD):
             outputExist = True
         
@@ -279,47 +279,47 @@ class metaConfig:
 def initialize(basedir):
     config = configparser.ConfigParser()
 
-    #Check if the config exists. if not, print what's wrong and exit.
+    # Check if the config exists. if not, print what's wrong and exit.
     filepath = basedir+os.sep+"settings.cfg"
     if not os.path.exists(filepath) and not os.path.isfile(filepath):
         print(str(filepath)+" does not exist! Exiting.")
         exit(-1)
 
-    #Read the config for further processing
+    # Read the config for further processing
     try:
         config.read(filepath)
     except:
         print("Fatal error proccessing config: " +str(filepath))
         exit(-1)
     
-    #Make sure the config has some readable section in it
+    # Make sure the config has some readable section in it
     if not len(config.sections()) > 0:
         print("Empty or corrupt config: " +str(filepath))
         exit(-1)
 
-    #Make sure META exists. It's one of the only required sections
+    # Make sure META exists. It's one of the only required sections
     if not 'META' in config:
         print("Missing META section in config: " +str(filepath))
         exit(-1)
 
-    #Make an empty meta object and parse the META config
+    # Make an empty meta object and parse the META config
     meta = metaConfig()
     meta.parseMeta(config['META'])
 
-    #Validate meta for errors
+    # Validate meta for errors
     meta.validateMeta()
 
-    #Now we can parse all the materials into an array holding their own instances of materialConfig
+    # Now we can parse all the materials into an array holding their own instances of materialConfig
     materials = []
-    #Remove META since we don't want to parse it twice
+    # Remove META since we don't want to parse it twice
     matKeys = list(config.keys())
     matKeys.remove("META")
-    #Run in loop for the rest of the keys in config
+    # Run in loop for the rest of the keys in config
     for i in range(len(matKeys)):
         mat = materialConfig()
         mat.parseMaterial(matKeys[i],config[matKeys[i]])
         mat.validateMaterial()
         materials.append(mat)
 
-    #Return our meta and our material configs
+    # Return our meta and our material configs
     return meta,materials

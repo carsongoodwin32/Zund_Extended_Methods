@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as et
-from os import listdir
+import os
 from os.path import isfile, join
+import shutil
 import time
 import datetime
 
@@ -102,7 +103,7 @@ def removeLayers(root,dL):
                 geometry.remove(outline)
 
 def writeNewFile(tree,outputFile):
-    #Write the tree to the specified filepath
+    # Write the tree to the specified filepath
     tree.write(outputFile)
 
 def postProcess(outputFile,pPCs):
@@ -111,157 +112,143 @@ def postProcess(outputFile,pPCs):
     return
 
 def algoEngine(inputFile,outputFile,method_files,overwrite_methods,change_type_on,delete_layers,post_process_cmds):
-    #Parse the xml file into its root
+    # Parse the xml file into its root
     tree = et.parse(inputFile)
     root = tree.getroot()[0]
 
-    #Setup file to be saved as .tmp
+    # Setup file to be saved as .tmp
     outputFile+=".tmp"
 
-    #Do all our method manipulation in these 3 functions
+    # Do all our method manipulation in these 3 functions
     newMethods = consolidateMethods(method_files)
     if len(newMethods) > 0:
         if overwrite_methods:
             clearMethods(root)
         addMethods(root,newMethods)
 
-    #We can do our layer delete stuff here
+    # We can do our layer delete stuff here
     removeLayers(root,delete_layers)
 
-    #We need to do our find and replace here if change_type_on is set
+    # We need to do our find and replace here if change_type_on is set
     renameTypes(root,change_type_on)
 
-    #Write out our new file after modifications
+    # Write out our new file after modifications
     writeNewFile(tree,outputFile)
 
-    #Run our post process command(s) if they exist
+    # Run our post process command(s) if they exist
     postProcess(outputFile,post_process_cmds)
 
-    #Return the name of the temp file
+    # Return the name of the temp file
     return outputFile
 
 def getOutputName(inputFile,appendExtensionString,outputDir):
     return outputDir+inputFile.split(".")[0]+appendExtensionString+"."+"".join(inputFile.split(".")[1:])
 
 def parseFileForMaterial(inputFile,hotfolderDir):
-    #Parse the xml file into its root
-    tree = et.parse(inputFile)
+    # Parse the xml file into its root
+    tree = et.parse(os.path.join(hotfolderDir,inputFile))
     root = tree.getroot()[0]
 
-    #We're looking for the name property of the Material tag
+    # We're looking for the name property of the Material tag
     material = root.find("./Material")
     materialStr = material.attrib['Name']
 
-    #Return what we've found
+    # Return what we've found
     return materialStr
 
-def deleteFile():
-    return
-
-def moveFile():
-    return
-
-def renameFile():
-    return
-
-def retrieveMatHits(inputFile,hotfolderDir):
-    #Setup the holder for our hits
+def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
+    # Setup the holder for our hits
     matHits = []
     defaultMat = None
 
-    #Parse the file for what material it contains
+    # Parse the file for what material it contains
     materialStr = parseFileForMaterial(inputFile,hotfolderDir)
 
-    #Check if any materials match the materialStr
+    # Check if any materials match the materialStr
     for mat in materialConfig:
-        if (materialStr.lower() in mat.mat.lower()) or (mat.mat.lower() == "COMMON".lower()):
+        if (materialStr.lower() in mat.mat.lower()) or (mat.mat.lower() == "COMMON".lower()) or (mat.mat.lower() in materialStr.lower()):
             matHits.append(mat)
         if (mat.mat.lower()=="DEFAULT".lower()):
             defaultMat = mat
     
-    #In the case where we have a default mat
+    # In the case where we have a default mat
     if defaultMat != None:
-        #Check if we have less than or equal to one hit
+        # Check if we have less than or equal to one hit
         if len(matHits) <= 1:
-            #Check if the mat is common, if it is, we add our default mat
+            # Check if the mat is common, if it is, we add our default mat
             try:
                 if matHits[0].mat.lower() == "COMMON".lower():
                     matHits.append(defaultMat)
             except:
                 matHits.append(defaultMat)
 
-    #Setup the containers for our outputs
+    # Setup the containers for our outputs
     method_files = []
     change_type_on = []
     delete_layers = []
     post_process_cmds = []
 
-    #Loops through mats in what we've found in the file
+    # Loops through mats in what we've found in the file
     for mats in matHits:
-        method_files.append(mats.mFP)
-        change_type_on.append(mats.cTO)
-        delete_layers.extend(mats.dL)
-        post_process_cmds.append(mats.pPC)
+        print(mats.mat)
+        if mats.mFP != None:
+            method_files.append(mats.mFP)
+            change_type_on.append(mats.cTO)
+            if mats.dL != None:
+                delete_layers.extend(mats.dL)
+            post_process_cmds.append(mats.pPC)
 
     return method_files, change_type_on, delete_layers, post_process_cmds
 
 def startAlgo(metaConfig,materialConfig,logObject):
-    #Show configuration in logs before processing anything
+    # Show configuration in logs before processing anything
     log_algo_opts(metaConfig,logObject)
     log_mat_opts(materialConfig,logObject)
 
-    #Set Global config options for the processing engine
+    # Set Global config options for the processing engine
     overwriteMethods = metaConfig.oM
     doNotReprocess = []
 
-    #Begin Processing
+    # Begin Processing
     try:
-        allFiles = [f for f in listdir(metaConfig.hD) if isfile(join(metaConfig.hD, f))]
-    except as Exception e:
+        allFiles = [f for f in os.listdir(metaConfig.hD) if isfile(join(metaConfig.hD, f))]
+        # If we're not retroactively processing, we need to not process any files currently in the dir
+        if metaConfig.wH and not metaConfig.rP:
+            doNotReprocess.extend(allFiles)
+    except Exception as e:
         logObject.log_string("Could not start main algorithm. Error getting files from hotfolder_dir.")
         logObject.log_string("Error message recieved: "+str(e))
         return 0
 
+    logObject.log_string("Started processing files in hotfolder_dir: "+str(metaConfig.hD))
+
     # Valid options could be metaConfig.wH, metaConfig.rP, neither, or both
     while True:
         if metaConfig.rP or metaConfig.wH:
-            # Set watch date to now
-            watchTime = time.time()
-            if metaConfig.rP:
-                # If we're retroactively processing, set watchDate to the Unix epoch.
-                watchTime = 0
-            logObject.log_string("Started processing files in hotfolder_dir: "+str(metaConfig.hD))
-            #Run the algorithm Engine with our specified settings on the found file
+            # Run the algorithm Engine with our specified settings on the found file
             for inFile in allFiles:
-                #Get the last accessed time of the file
-                try: 
-                    access_time = os.path.getatime(inFile)
-                except:
-                    continue
-                # If our access time is in the range we want, it's not a processed file, 
-                # it is a .zcc file, and we haven't marked this as not to process
-                if access_time >= watchTime and not metaConfig.aES in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
+                if  not metaConfig.aES in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
                     logObject.log_string("Started processing file: "+str(inFile))
                     # Get the output name of the file
                     # This should be returned as a full path string instead of just a file name
-                    outFile = getOutputName(inFile,metaConfig.aES,metaConfig.hD,metaConfig.oD)
+                    outFile = getOutputName(inFile,metaConfig.aES,metaConfig.oD)
                     # Read the files material tag and retrieve all hits for all the different attributes
-                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(metaConfig.hD+os.sep+inFile)
+                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(inFile,metaConfig.hD,materialConfig)
                     if methodFiles:
                         # Run the main algorithm on the file, saving it as a temp file (so we don't overwrite the original)
-                        tempFile = algoEngine(metaConfig.hD+os.sep+inFile,outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
+                        tempFile = algoEngine(os.path.join(metaConfig.hD,inFile),outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
                         logObject.log_string("Saved processed file as: "+str(tempFile))
                         if metaConfig.dFAP:
                             # Go ahead and delete the original file
                             logObject.log_string("Deleting original file: "+str(inFile))
-                            deleteFile(inFile,metaConfig.hD)
+                            os.remove(os.path.join(metaConfig.hD,inFile))
                         else:
                             # Move the original file to the oFD dir
                             logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ "to "+str(metaConfig.oFD))
-                            moveFile(inFile,metaConfig.hD,metaConfig.oFD)
+                            shutil.move(os.path.join(metaConfig.hD,inFile),metaConfig.oFD)
                         # Now we can rename the temp file to the output name
                         logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
-                        renameFile(tempFile,outFile)
+                        os.rename(tempFile,outFile)
                     else:
                         # If method files returns [] or None or something like that
                         # mark this file as not to reprocess.
@@ -275,11 +262,21 @@ def startAlgo(metaConfig,materialConfig,logObject):
                 break
             else:
                 # If we are watching the hotfolder, get the most recent file listing in the directory
-                allFiles = [f for f in listdir(metaConfig.hD) if isfile(join(metaConfig.hD, f))]
+                allFiles = [f for f in os.listdir(metaConfig.hD) if isfile(join(metaConfig.hD, f))]
+
+                # Check for files that exist in doNotReprocess that don't exist in allFiles anymore
+                # You could have a case where someone moves a file out that existed before ZEM starts
+                # and then moves it back in to start processing
+                for file in doNotReprocess:
+                    if file not in allFiles:
+                        try:
+                            doNotReprocess.remove(file)
+                        except:
+                            continue
         else:
             # if wH and rP are false, we can't do anything so we'll exit. 
             logObject.log_string("Current settings prevent any files from being processed.")
             break
 
-    #This should never actually get hit in the wH case.
+    # This should never actually get hit in the wH case.
     return 0
