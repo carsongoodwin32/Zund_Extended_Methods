@@ -146,13 +146,22 @@ def getOutputName(inputFile,appendExtensionString,outputDir):
     return outputDir+inputFile.split(".")[0]+appendExtensionString+"."+"".join(inputFile.split(".")[1:])
 
 def parseFileForMaterial(inputFile,hotfolderDir):
-    # Parse the xml file into its root
-    tree = et.parse(os.path.join(hotfolderDir,inputFile))
-    root = tree.getroot()[0]
+    try:
+        # Parse the xml file into its root
+        tree = et.parse(os.path.join(hotfolderDir,inputFile))
+        root = tree.getroot()[0]
 
-    # We're looking for the name property of the Material tag
-    material = root.find("./Material")
-    materialStr = material.attrib['Name']
+        # We're looking for the name property of the Material tag
+        material = root.find("./Material")
+        materialStr = material.attrib['Name']
+    except Exception as e:
+        # Return False, we could be in a permission denied situation.
+        # We are accessing too fast during copying maybe?
+        # We need to read the exception and check if its permission err
+        if "permission denied".lower() in str(e).lower():
+            return False
+        else:
+            return None
 
     # Return what we've found
     return materialStr
@@ -164,6 +173,14 @@ def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
 
     # Parse the file for what material it contains
     materialStr = parseFileForMaterial(inputFile,hotfolderDir)
+
+    # If we recieve False, from parsing the file, 
+    # We're just gonna skip it and come back.
+    # If we recieve None, we will error out.
+    if materialStr == False:
+        return False,False,False,False
+    if materialStr == None:
+        return None,None,None,None
 
     # Check if any materials match the materialStr
     for mat in materialConfig:
@@ -235,6 +252,12 @@ def startAlgo(metaConfig,materialConfig,logObject):
                     outFile = getOutputName(inFile,metaConfig.aES,metaConfig.oD)
                     # Read the files material tag and retrieve all hits for all the different attributes
                     methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(inFile,metaConfig.hD,materialConfig)
+                    if methodFiles == False:
+                        logObject.log_string("Recieved permission denied error for file: "+str(inFile)+". Retrying...")
+                        continue
+                    if methodFiles == None:
+                        logObject.log_string("Recieved generic fatal error for file: "+str(inFile)+". Exiting program now...")
+                        return 0
                     if methodFiles:
                         # Run the main algorithm on the file, saving it as a temp file (so we don't overwrite the original)
                         tempFile = algoEngine(os.path.join(metaConfig.hD,inFile),outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
@@ -244,8 +267,11 @@ def startAlgo(metaConfig,materialConfig,logObject):
                             logObject.log_string("Deleting original file: "+str(inFile))
                             os.remove(os.path.join(metaConfig.hD,inFile))
                         else:
+                            # We will always overwrite a file in the oFD, else we will error out.
+                            if(os.path.isfile(os.path.join(metaConfig.oFD,inFile))):
+                                os.remove(os.path.join(metaConfig.oFD,inFile))
                             # Move the original file to the oFD dir
-                            logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ "to "+str(metaConfig.oFD))
+                            logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ " to "+str(metaConfig.oFD))
                             shutil.move(os.path.join(metaConfig.hD,inFile),metaConfig.oFD)
                         # Now we can rename the temp file to the output name
                         logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
