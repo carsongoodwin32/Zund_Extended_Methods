@@ -274,7 +274,7 @@ def startAlgo(metaConfig,materialConfig,logObject):
                             logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ " to "+str(metaConfig.oFD))
                             shutil.move(os.path.join(metaConfig.hD,inFile),metaConfig.oFD)
                         # Now we can rename the temp file to the output name
-                        logObject.log_string("Renaming processed file from: "+str(inFile)+ "to "+str(outFile))
+                        logObject.log_string("Renaming processed file from: "+str(inFile)+ " to "+str(outFile))
                         # We will always overwrite a file in the output, else we will error out.
                         if(os.path.isfile(outFile)):
                             os.remove(outFile)
