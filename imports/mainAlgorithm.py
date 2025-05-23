@@ -154,13 +154,14 @@ def parseFileForMaterial(inputFile,hotfolderDir):
         # We're looking for the name property of the Material tag
         material = root.find("./Material")
         materialStr = material.attrib['Name']
+        
     except Exception as e:
-        # Return False, we could be in a permission denied situation.
-        # We are accessing too fast during copying maybe?
-        # We need to read the exception and check if its permission err
         if "permission denied".lower() in str(e).lower():
+            # We could be getting permission denied because we're still copying the file
+            # It would be nice to have a max retries before it goes to do not reprocess
             return False
         else:
+            # All other errors, lets just exit over. Clearly something is wrong.
             return None
 
     # Return what we've found

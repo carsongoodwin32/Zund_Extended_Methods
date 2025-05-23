@@ -37,15 +37,15 @@ def main():
         lH.initLogs(metaConfig.pTL,metaConfig.lB)
         lH.logObject.log_string("Logger set up successfully!")
 
-    #At this point in the code we can now make the assumptions that:
-    #'META' config is !syntactically! correct.
-    #material specific, common, and default configs are !syntactically! correct.
-    #We have all the permissions we want/need for all relevant directories.
-    #Everything except for the main code has been initialized (configs, loggers, testers, etc)
+    # At this point in the code we can now make the assumptions that:
+    # 'META' config is !syntactically! correct.
+    # material specific, common, and default configs are !syntactically! correct.
+    # We have all the permissions we want/need for all relevant directories.
+    # Everything except for the main code has been initialized (configs, loggers, testers, etc)
 
-    #Lets run the main algorithm now
+    # Lets run the main algorithm now
     result = mA.startAlgo(metaConfig,materialConfig,lH.logObject)
-    #In the case that we're not watching a hotfolder, we can return a success value.
+    # In the case that we're not watching a hotfolder, we can return a success value.
     lH.logObject.log_string("Main Algorithm Exited. Ending Program...")
     exit(result)
 
