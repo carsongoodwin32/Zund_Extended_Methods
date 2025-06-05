@@ -10,11 +10,13 @@ def log_algo_opts(metaConfig,logObject):
     logObject.log_string("Main Algorithm Started!")
     logObject.log_string("[META] Meta Configured with:")
     logObject.log_string("Watch Hotfolder: "+str(metaConfig.wH))
+    logObject.log_string("Move to Processing Dir: "+str(metaConfig.mTPD))
     logObject.log_string("Retroactively Process: "+str(metaConfig.rP))
     logObject.log_string("Delete Files after Processing: "+str(metaConfig.dFAP))
     logObject.log_string("Appended Extension String: "+str(metaConfig.aES))
     logObject.log_string("Hotfolder Dir: "+str(metaConfig.hD))
     logObject.log_string("Output Dir: "+str(metaConfig.oD))
+    logObject.log_string("Processing Dir: "+str(metaConfig.pD))
     logObject.log_string("Original Files Dir: "+str(metaConfig.oFD))
     return
 
@@ -26,6 +28,7 @@ def log_mat_opts(materialConfig,logObject):
         logObject.log_string("Change Type on: "+str(materialConfig[i].cTO))
         if materialConfig[i].dL != None:
             logObject.log_string("Delete Layers: "+', '.join(materialConfig[i].dL))
+        logObject.log_string("Overwrite Methods: "+str(materialConfig[i].oM))
         logObject.log_string("Post Process Command: "+str(materialConfig[i].pPC))
     return
 
@@ -143,7 +146,7 @@ def algoEngine(inputFile,outputFile,method_files,overwrite_methods,change_type_o
     return outputFile
 
 def getOutputName(inputFile,appendExtensionString,outputDir):
-    return outputDir+inputFile.split(".")[0]+appendExtensionString+"."+"".join(inputFile.split(".")[1:])
+    return outputDir+inputFile.split(".")[0]+appendExtensionString+"."+".".join(inputFile.split(".")[1:])
 
 def parseFileForMaterial(inputFile,hotfolderDir):
     try:
@@ -171,6 +174,7 @@ def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
     # Setup the holder for our hits
     matHits = []
     defaultMat = None
+    uncommonMat = None
 
     # Parse the file for what material it contains
     materialStr = parseFileForMaterial(inputFile,hotfolderDir)
@@ -189,6 +193,8 @@ def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
             matHits.append(mat)
         if (mat.mat.lower()=="DEFAULT".lower()):
             defaultMat = mat
+        if (mat.mat.lower()=="UNCOMMON".lower()):
+            uncommonMat = mat
     
     # In the case where we have a default mat
     if defaultMat != None:
@@ -200,12 +206,29 @@ def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
                     matHits.append(defaultMat)
             except:
                 matHits.append(defaultMat)
-
+    
+    # In the case where we have an uncommon mat
+    if uncommonMat != None:
+        # Check if we have more than one hit
+        if len(matHits) > 1:
+            # Check if any of the mats are not common or default
+            try:
+                for mat in matHits:
+                    if mat.mat.lower() != "COMMON".lower() and mat.mat.lower() != "DEFAULT".lower():
+                        if not uncommonMat in matHits:
+                            matHits.append(uncommonMat)
+            except:
+                pass
+                
     # Setup the containers for our outputs
     method_files = []
     change_type_on = []
     delete_layers = []
     post_process_cmds = []
+
+    priority_oM = None
+    secondary_oM = None
+    tertiary_oM = None
 
     # Loops through mats in what we've found in the file
     for mats in matHits:
@@ -215,17 +238,35 @@ def retrieveMatHits(inputFile,hotfolderDir,materialConfig):
             if mats.dL != None:
                 for item in mats.dL:
                     delete_layers.extend(ast.literal_eval(item))
+            if mats.oM != None and mats.mat.lower()!="common".lower():
+                priority_oM = mats.oM
+            elif mats.oM != None and mats.mat.lower()=="uncommon".lower():
+                secondary_oM = mats.oM
+            elif mats.oM != None and mats.mat.lower()=="common".lower():
+                tertiary_oM = mats.oM
             post_process_cmds.append(mats.pPC)
 
-    return method_files, change_type_on, delete_layers, post_process_cmds
+    #If our material definition/default has overwrite_methods set, we'll use that
+    if priority_oM != None:
+        overwrite_methods = priority_oM
+    #If our material definition/default does not have overwrite_methods set, but uncommon does (and we have uncommon), we'll use that
+    elif priority_oM == None and secondary_oM != None:
+        overwrite_methods = secondary_oM
+    #If our material definition/default does not have overwrite_methods set, and uncommon also does not (or we dont have uncommon), we'll use commons set value.
+    elif priority_oM == None and secondary_oM == None and tertiary_oM != None:
+        overwrite_methods = tertiary_oM
+    #Otherwise, we're just gonna say we're False cause nothing has it set or something weird is going on.
+    else:
+        overwrite_methods = False
+
+    return method_files, change_type_on, delete_layers, post_process_cmds, overwrite_methods
 
 def startAlgo(metaConfig,materialConfig,logObject):
     # Show configuration in logs before processing anything
     log_algo_opts(metaConfig,logObject)
     log_mat_opts(materialConfig,logObject)
 
-    # Set Global config options for the processing engine
-    overwriteMethods = metaConfig.oM
+    # Set global container for preventing reprocessing
     doNotReprocess = []
 
     # Begin Processing
@@ -247,44 +288,79 @@ def startAlgo(metaConfig,materialConfig,logObject):
             # Run the algorithm Engine with our specified settings on the found file
             for inFile in allFiles:
                 if  not metaConfig.aES in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
+                    # If move_to_processing_dir is set in cfg, we should copy this file to a temp dir and work on it from there
+                    if (metaConfig.mTPD):
+                        logObject.log_string("Moving original file: "+str(inFile)+" to "+str(metaConfig.pD))
+                        shutil.copy(os.path.join(metaConfig.hD,inFile),os.path.join(metaConfig.pD,inFile))
+                        try:
+                            os.remove(os.path.join(metaConfig.hD,inFile))
+                        except:
+                            logObject.log_string("Failed to remove original file from hotfolder_dir during move_to_processing_dir step! Retrying...")
+                            continue
+                    # Begin processing
                     logObject.log_string("Started processing file: "+str(inFile))
                     # Get the output name of the file
                     # This should be returned as a full path string instead of just a file name
                     outFile = getOutputName(inFile,metaConfig.aES,metaConfig.oD)
                     # Read the files material tag and retrieve all hits for all the different attributes
-                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs = retrieveMatHits(inFile,metaConfig.hD,materialConfig)
+                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs, overwriteMethods = retrieveMatHits(inFile,metaConfig.pD if metaConfig.mTPD else metaConfig.hD,materialConfig)
                     if methodFiles == False:
                         logObject.log_string("Recieved permission denied error for file: "+str(inFile)+". Retrying...")
                         continue
                     if methodFiles == None:
-                        logObject.log_string("Recieved generic fatal error for file: "+str(inFile)+". Exiting program now...")
-                        return 0
+                        logObject.log_string("Recieved generic fatal error for file: "+str(inFile)+". We won't try and process this again...")
+                        doNotReprocess.append(inFile)
+                        continue
                     if methodFiles:
                         # Run the main algorithm on the file, saving it as a temp file (so we don't overwrite the original)
-                        tempFile = algoEngine(os.path.join(metaConfig.hD,inFile),outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
+                        tempFile = algoEngine(os.path.join(metaConfig.pD if metaConfig.mTPD else metaConfig.hD,inFile),outFile,methodFiles,overwriteMethods,changeTypeOn,deleteLayers,postProcessCMDs)
                         logObject.log_string("Saved processed file as: "+str(tempFile))
                         if metaConfig.dFAP:
                             # Go ahead and delete the original file
                             logObject.log_string("Deleting original file: "+str(inFile))
-                            os.remove(os.path.join(metaConfig.hD,inFile))
+                            try:
+                                os.remove(os.path.join(metaConfig.pD if metaConfig.mTPD else metaConfig.hD,inFile))
+                            except:
+                                logObject.log_string("Failed to remove original file during delete_file_after_processing step! Setting do not reprocess to avoid infinite loop.")
+                                doNotReprocess.append(inFile)
                         else:
                             # We will always overwrite a file in the oFD, else we will error out.
                             if(os.path.isfile(os.path.join(metaConfig.oFD,inFile))):
-                                os.remove(os.path.join(metaConfig.oFD,inFile))
+                                try:
+                                    os.remove(os.path.join(metaConfig.oFD,inFile))
+                                except:
+                                    logObject.log_string("Failed to remove existing file: "+str(inFile)+" from original_files_dir! This file get out of sync.")
                             # Move the original file to the oFD dir
-                            logObject.log_string("Moving original file from: "+str(metaConfig.hD)+ " to "+str(metaConfig.oFD))
-                            shutil.move(os.path.join(metaConfig.hD,inFile),metaConfig.oFD)
+                            logObject.log_string("Moving original file from: "+str(metaConfig.pD if metaConfig.mTPD else metaConfig.hD)+ " to "+str(metaConfig.oFD))
+                            try:
+                                shutil.move(os.path.join(metaConfig.pD if metaConfig.mTPD else metaConfig.hD,inFile),metaConfig.oFD)
+                            except:
+                                logObject.log_string("Failed to move original file to original_files_dir: "+str(inFile)+". Setting do not reprocess to avoid infinite loop.")
+                                doNotReprocess.append(inFile)
                         # Now we can rename the temp file to the output name
                         logObject.log_string("Renaming processed file from: "+str(inFile)+ " to "+str(outFile))
                         # We will always overwrite a file in the output, else we will error out.
                         if(os.path.isfile(outFile)):
-                            os.remove(outFile)
-                        os.rename(tempFile,outFile)
+                            try:
+                                os.remove(outFile)
+                            except:
+                                logObject.log_string("Failed to remove existing file: "+str(inFile)+" from output_dir! This file get out of sync.")
+                        try:
+                            os.rename(tempFile,outFile)
+                        except:
+                            logObject.log_string("Failed to rename tempFile: "+str(tempFile)+" to outFile! The previous step may have failed.")
                     else:
                         # If method files returns [] or None or something like that
                         # mark this file as not to reprocess.
                         doNotReprocess.append(inFile)
                         logObject.log_string("No rules detected for: "+str(inFile))
+                        # Copy the file out even if we haven't processed it.
+                        logObject.log_string("Moving unprocessed file from: "+str(metaConfig.pD if metaConfig.mTPD else metaConfig.hD)+ " to "+str(metaConfig.oD))
+                        try:
+                            shutil.move(os.path.join(metaConfig.pD if metaConfig.mTPD else metaConfig.hD,inFile),metaConfig.oD)
+                        except:
+                            logObject.log_string("Failed to move unprocessed to output_dir: "+str(inFile)+". Setting do not reprocess to avoid infinite loop.")
+                            doNotReprocess.append(inFile)
                     # We've finished running rule on this file, start another loop or exit.
                     logObject.log_string("Finished processing file: "+str(inFile))
             if not metaConfig.wH:

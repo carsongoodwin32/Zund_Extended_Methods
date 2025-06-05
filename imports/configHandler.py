@@ -3,11 +3,12 @@ import os
 import ast
 
 class materialConfig:
-    def __init__(self,material=None,method_file_path=None,change_type_on=None,delete_layers=None,post_process_cmd=None):
+    def __init__(self,material=None,method_file_path=None,change_type_on=None,delete_layers=None,overwrite_methods=None,post_process_cmd=None):
         self.mat = material
         self.mFP = method_file_path
         self.cTO = change_type_on
         self.dL = delete_layers
+        self.oM = overwrite_methods
         self.pPC = post_process_cmd
 
     def validateMaterial(self):
@@ -57,6 +58,18 @@ class materialConfig:
             except Exception as e:
                 print("Error parsing  'delete_layers' for config "+mat+". Exception recieved: '"+str(e)+"'")
                 self.dL = None
+        
+        # Check if overwrite_methods even exists in this dict
+        if 'overwrite_methods' in matDict:
+            # I don't think this needs to be wrapped in a try except, but whatever
+            try:
+                if matDict['overwrite_methods'].lower() == "true":
+                    self.oM = True
+                else:
+                    self.oM = False
+            except Exception as e:
+                print("Error parsing 'overwrite_methodsn' for config "+mat+". Exception recieved: '"+str(e)+"'")
+                self.oM = None
 
         # Check if post_process_cmd even exists in this dict
         if 'post_process_cmd' in matDict:
@@ -70,19 +83,20 @@ class materialConfig:
 
 class metaConfig:
     def __init__(self, test_environment=False, log_to_file=False, path_to_log=None, log_behavior='append', watch_hotfolder=False, 
-             retroactively_process=False, overwrite_methods=True, delete_file_after_processing=False, append_extension_string='.zem', 
-             hotfolder_dir=None, output_dir=None, original_files_dir=None):
+             move_to_processing_dir=False, retroactively_process=False, delete_file_after_processing=False, append_extension_string='.zem', 
+             hotfolder_dir=None, output_dir=None, processing_dir=None, original_files_dir=None):
         self.tE = test_environment
         self.lTF = log_to_file
         self.pTL = path_to_log
         self.lB = log_behavior
         self.wH = watch_hotfolder
+        self.mTPD = move_to_processing_dir
         self.rP = retroactively_process
-        self.oM = overwrite_methods
         self.dFAP = delete_file_after_processing
         self.aES = append_extension_string
         self.hD = hotfolder_dir
         self.oD = output_dir
+        self.pD = processing_dir
         self.oFD = original_files_dir
 
     def validateMeta(self):
@@ -112,6 +126,15 @@ class metaConfig:
             else:
                 if(self.oFD == self.hD or self.oFD == self.oD):  
                     print("settings.cfg validation failed: original_files_dir is equal to hotfolder_dir or output_dir")
+                    exit(-1)
+        
+        if(self.mTPD):
+            if(self.pD == None):
+                print("settings.cfg validation failed: processing_dir not set while move_to_processing_dir = true")
+                exit(-1)           
+            else:
+                if(self.pD == self.hD):  
+                    print("settings.cfg validation failed: processing_dir is equal to hotfolder_dir")
                     exit(-1)
 
         # Validate paths and files defined in META config
@@ -166,6 +189,15 @@ class metaConfig:
         if(not outputExist):
             print("settings.cfg validation failed: output_dir directory inaccessible. Check that the provided directory exists.")
             exit(-1)
+
+        if(self.mTPD):
+            # Check if the path is a directory
+            if os.path.isdir(self.pD):
+                processingExist = True
+            
+            if(not processingExist):
+                print("settings.cfg validation failed: processing_dir directory inaccessible. Check that the provided directory exists.")
+                exit(-1)
         
 
 
@@ -217,6 +249,16 @@ class metaConfig:
                 print("Error parsing 'watch_hotfolder' for config: META. Exception recieved: '"+str(e)+"'")
                 self.wH = False
 
+        if 'move_to_processing_dir' in metaDict:
+            try:
+                if metaDict['move_to_processing_dir'].lower() == "true":
+                    self.mTPD = True
+                else:
+                    self.mTPD = False
+            except Exception as e:
+                print("Error parsing 'move_to_processing_dir' for config: META. Exception recieved: '"+str(e)+"'")
+                self.mTPD = False
+
         if 'retroactively_process' in metaDict:
             try:
                 if metaDict['retroactively_process'].lower() == "true":
@@ -226,16 +268,6 @@ class metaConfig:
             except Exception as e:
                 print("Error parsing 'retroactively_process' for config: META. Exception recieved: '"+str(e)+"'")
                 self.rP = False
-
-        if 'overwrite_methods' in metaDict:
-            try:
-                if metaDict['overwrite_methods'].lower() == "true":
-                    self.oM = True
-                else:
-                    self.oM = False
-            except Exception as e:
-                print("Error parsing 'overwrite_methods' for config: META. Exception recieved: '"+str(e)+"'")
-                self.oM = True
 
         if 'delete_file_after_processing' in metaDict:
             try:
@@ -267,6 +299,13 @@ class metaConfig:
             except Exception as e:
                 print("Error parsing 'output_dir' for config: META. Exception recieved: '"+str(e)+"'")
                 self.oD = None
+
+        if 'processing_dir' in metaDict:
+            try:
+                self.pD = metaDict['processing_dir']
+            except Exception as e:
+                print("Error parsing 'processing_dir' for config: META. Exception recieved: '"+str(e)+"'")
+                self.pD = None
 
         if 'original_files_dir' in metaDict:
             try:
