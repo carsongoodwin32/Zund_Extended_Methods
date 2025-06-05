@@ -11,6 +11,7 @@ def exportEnvironmentReport(basedir,testResults):
     "Writing to logfile", "Reading from logfile", "Deleting logfile",
     "Writing to logdir", "Reading from logdir", "Deleting in logdir",
     "Writing to hotfolder", "Reading from hotfolder", "Deleting in hotfolder",
+    "Writing to processing_dir", "Reading from processing_dir", "Deleting in processing_dir",
     "Writing to output_dir", "Reading from output_dir", "Deleting in output_dir",
     "Writing to original_files_dir", "Reading from original_files_dir", "Deleting in original_files_dir"
     ]
@@ -159,6 +160,12 @@ def initTests(basedir,metaConfig):
     if(metaConfig.wH):
         # Reading, Writing, Deleting from the hotfolder
         testResults.extend(rwdTestAtPath(metaConfig.hD))
+    else:
+        testResults.extend([None,None,None])
+
+    if(metaConfig.mTPD):
+        # Reading, Writing, Deleting from the hotfolder
+        testResults.extend(rwdTestAtPath(metaConfig.pD))
     else:
         testResults.extend([None,None,None])
 
