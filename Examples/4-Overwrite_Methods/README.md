@@ -1,4 +1,4 @@
-Deleting Layers:
+Overwrite Methods:
 
 This demo aims to represent an advanced use of Zund Extended Methods, in a simple controlled environment.
 We have only 1 .zcc file in this case.

@@ -6,6 +6,9 @@ import time
 import datetime
 import ast
 
+#Zund reserved file names, do not process these.
+fileExtExclusions = [".W",".BUSY",".w",".busy"]
+
 def log_algo_opts(metaConfig,logObject):
     logObject.log_string("Main Algorithm Started!")
     logObject.log_string("[META] Meta Configured with:")
@@ -287,7 +290,7 @@ def startAlgo(metaConfig,materialConfig,logObject):
         if metaConfig.rP or metaConfig.wH:
             # Run the algorithm Engine with our specified settings on the found file
             for inFile in allFiles:
-                if  not metaConfig.aES in inFile and ".zcc" in inFile and not inFile in doNotReprocess:
+                if not metaConfig.aES in inFile and ".zcc" in inFile and not inFile in doNotReprocess and not any(fileExt in inFile for fileExt in fileExtExclusions):
                     # If move_to_processing_dir is set in cfg, we should copy this file to a temp dir and work on it from there
                     if (metaConfig.mTPD):
                         logObject.log_string("Moving original file: "+str(inFile)+" to "+str(metaConfig.pD))
@@ -303,7 +306,12 @@ def startAlgo(metaConfig,materialConfig,logObject):
                     # This should be returned as a full path string instead of just a file name
                     outFile = getOutputName(inFile,metaConfig.aES,metaConfig.oD)
                     # Read the files material tag and retrieve all hits for all the different attributes
-                    methodFiles, changeTypeOn, deleteLayers, postProcessCMDs, overwriteMethods = retrieveMatHits(inFile,metaConfig.pD if metaConfig.mTPD else metaConfig.hD,materialConfig)
+                    try:
+                        methodFiles, changeTypeOn, deleteLayers, postProcessCMDs, overwriteMethods = retrieveMatHits(inFile,metaConfig.pD if metaConfig.mTPD else metaConfig.hD,materialConfig)
+                    except:
+                        logObject.log_string("Recieved generic fatal error for file: "+str(inFile)+". We won't try and process this again...")
+                        doNotReprocess.append(inFile)
+                        continue
                     if methodFiles == False:
                         logObject.log_string("Recieved permission denied error for file: "+str(inFile)+". Retrying...")
                         continue
